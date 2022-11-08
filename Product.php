@@ -30,7 +30,7 @@ class Product extends CI_Controller
 		return $values;
 	}
 
-	public function send_email($subject)
+	public function send_email($subject, $body)
 	{
 		$this->load->config('email');
 		$this->load->library('email');
@@ -38,7 +38,7 @@ class Product extends CI_Controller
 		$this->email->to('khamid1196@gmail.com');
 
 		$this->email->subject($subject);
-		$this->email->message('This is email notification.');
+		$this->email->message($body);
 
 		$this->email->set_mailtype('html');
 		$this->email->send();
@@ -72,6 +72,8 @@ class Product extends CI_Controller
 		$product_name = $this->input->post('product_name');
 		$price = $this->input->post('price');
 
+		$bodyemail = 'Product '.$product_name. ' is inserted';
+
 		// configure the Google Client
 		$client = new \Google_Client();
 		$client->setApplicationName('Google Sheets API');
@@ -89,7 +91,7 @@ class Product extends CI_Controller
 		$spreadsheet = $service->spreadsheets->get($spreadsheetId);
 
 		$range = 'Sheet1';
-		$values = [['30497', '20 Januari 2023', 'Keyboard', '1500000']]; //add the values to be appended
+		$values = [[$id_product, $launch_date, $product_name, $price]]; //add the values to be appended
 		//execute the request
 		$body = new Google_Service_Sheets_ValueRange([
 			'values' => $values
@@ -102,7 +104,7 @@ class Product extends CI_Controller
 		];
 		$result = $service->spreadsheets_values->append($spreadsheetId, $range, $body, $params, $insert);
 		if ($result) {
-			$this->send_email($subject);
+			$this->send_email($subject, $bodyemail);
 		}
 		echo json_encode($result);
 	}
@@ -114,6 +116,9 @@ class Product extends CI_Controller
 		$launch_date = $this->input->post('launch_date');
 		$product_name = $this->input->post('product_name');
 		$price = $this->input->post('price');
+		$idsheet = $this->input->post('idsheet');
+		
+		$bodyemail = 'Product '.$product_name. ' is updated';
 
 		// configure the Google Client
 		$client = new \Google_Client();
@@ -131,8 +136,8 @@ class Product extends CI_Controller
 		$spreadsheetId = '1311TBXl0iUfBRCrjBfYISXvMUpcMbSfpVB38MnAedS8';
 		$spreadsheet = $service->spreadsheets->get($spreadsheetId);
 
-		$range = 'Sheet1!A2:D2';
-		$values = [['10398', '27 December 2022', 'SmartPhone', '30000']];
+		$range = 'Sheet1!A' . $idsheet . ':D' . $idsheet; // get spesific row
+		$values = [[$id_product, $launch_date, $product_name, $price]];
 
 		$body = new Google_Service_Sheets_ValueRange([
 			'values' => $values
@@ -148,7 +153,7 @@ class Product extends CI_Controller
 			$params
 		);
 		if ($result) {
-			$this->send_email($subject);
+			$this->send_email($subject, $bodyemail);
 		}
 		echo json_encode($result);
 	}
@@ -156,7 +161,10 @@ class Product extends CI_Controller
 	function delete_product()
 	{
 		$subject = 'Delete Product';
-		$id_product = $this->input->post('kode');
+		$id_product = $this->input->post('cellindex');
+		$product_name = $this->input->post('product_name');
+
+		$bodyemail = 'Product '.$product_name. ' is deleted';
 		// configure the Google Client
 		$client = new \Google_Client();
 		$client->setApplicationName('Google Sheets API');
@@ -179,8 +187,8 @@ class Product extends CI_Controller
 					'range' => array(
 						'sheetId' => 0, // the ID of the sheet/tab shown after 'gid=' in the URL
 						'dimension' => "ROWS",
-						'startIndex' => 3,
-						'endIndex' => 3 + 1
+						'startIndex' => $id_product - 1,
+						'endIndex' => $id_product
 					)
 				)
 			)
@@ -188,7 +196,7 @@ class Product extends CI_Controller
 
 		$result = $service->spreadsheets->batchUpdate($spreadsheetId, $batchUpdateRequest);
 		if ($result) {
-			$this->send_email($subject);
+			$this->send_email($subject, $bodyemail);
 		}
 		echo json_encode($result);
 	}
